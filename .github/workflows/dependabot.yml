@@ -1,3 +1,5 @@
+name: "Dependabot Updates"
+
 on:
   push:
     branches:
@@ -8,22 +10,24 @@ on:
   schedule:
     - cron: "0 0 * * *"  # Exécute tous les jours à minuit
 
-updates:
-  - package-ecosystem: "npm"  # Pour les projets Node.js
-    directory: "/"  # Racine du projet
-    schedule:
-      interval: "daily"  # Vérifie tous les jours
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-    assignees:
-      - "ton-nom-github"
-    branches:
-      - "feat/test-brancheeeee"
+jobs:
+  dependabot:
+    name: "Check Dependency Updates"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-  - package-ecosystem: "composer"  # Pour les projets PHP
-    directory: "/"
-    schedule:
-      interval: "daily"
-    branches:
-      - "feat/test-brancheeeee"
+      - name: Enable Dependabot for NPM
+        uses: dependabot/fetch-metadata@v1
+        with:
+          package-ecosystem: "npm"
+          directory: "/"
+          target-branch: "feat/test-brancheeeee"
+
+      - name: Enable Dependabot for Composer
+        uses: dependabot/fetch-metadata@v1
+        with:
+          package-ecosystem: "composer"
+          directory: "/"
+          target-branch: "feat/test-brancheeeee"
