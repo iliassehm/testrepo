@@ -1,2 +1,2 @@
 # Simule une fuite de secret dans un fichier Python
-API_KEY = ""
+API_KEY = "yesssss"
