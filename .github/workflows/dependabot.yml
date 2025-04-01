@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: "npm" # Pour les projets Node.js
+    directory: "/" # Racine du projet
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    assignees:
+      - "ton-nom-github"  # Optionnel, assigne quelqu'un
+
+  - package-ecosystem: "composer" # Pour les projets PHP
+    directory: "/"
+    schedule:
+      interval: "weekly"
