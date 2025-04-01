@@ -3,14 +3,18 @@ updates:
   - package-ecosystem: "npm" # Pour les projets Node.js
     directory: "/" # Racine du projet
     schedule:
-      interval: "daily"
+      interval: "always"  # Déclenche lors d'un push
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
     assignees:
       - "ton-nom-github"  # Optionnel, assigne quelqu'un
+    branches:
+      - "feat/test-brancheeeee"  # Spécifie la branche cible
 
   - package-ecosystem: "composer" # Pour les projets PHP
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "always"  # Déclenche lors d'un push
+    branches:
+      - "feat/test-brancheeeee"  # Spécifie la branche cible
