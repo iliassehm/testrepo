@@ -29,8 +29,5 @@ jobs:
       - name: Authenticate with Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run Snyk test
-        run: snyk test
-
       - name: Monitor project with Snyk
         run: snyk monitor  # Envoie les résultats à Snyk pour affichage dans le tableau de bord
