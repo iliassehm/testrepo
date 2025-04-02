@@ -4,38 +4,33 @@ on:
   push:
     branches:
       - main
-      - feat/test-brancheeeee
   pull_request:
     branches:
       - main
-      - feat/test-brancheeeee
 
 jobs:
   snyk:
     runs-on: ubuntu-latest
     steps:
-      # Étape 1 : Checkout le code
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Étape 2 : Installer Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '14'  # ou une autre version selon ton besoin
+          node-version: '14'
 
-      # Étape 3 : Installer les dépendances
       - name: Install dependencies
         run: npm install
 
-      # Étape 4 : Installer Snyk CLI
       - name: Install Snyk CLI
         run: npm install -g snyk
 
-      # Étape 5 : Authentification Snyk avec le secret
       - name: Authenticate with Snyk
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}  # Assure-toi que ton token est stocké dans les secrets de GitHub
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      # Étape 6 : Analyser les vulnérabilités
       - name: Run Snyk test
         run: snyk test
+
+      - name: Monitor project with Snyk
+        run: snyk monitor  # Envoie les résultats à Snyk pour affichage dans le tableau de bord
