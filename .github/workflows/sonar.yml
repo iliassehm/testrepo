@@ -14,14 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+          fetch-depth: 0
 
       - uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          # Ajoute ces valeurs dans le bloc `with`
+          sonar.projectKey: "keltio_test"  # Remplace avec ton projectKey
+          sonar.organization: "keltio"         # Seulement pour SonarCloud
 
-      # Activer le Quality Gate pour bloquer si des vulnérabilités sont trouvées
       - uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
