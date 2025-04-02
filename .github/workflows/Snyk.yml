@@ -29,5 +29,12 @@ jobs:
       - name: Authenticate with Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
+      - name: Run Snyk test (fail-safe)
+        run: |
+          snyk test || echo "Snyk test found vulnerabilities, but continuing the workflow"  # Ne bloque pas le workflow
+
+      - name: Fix vulnerabilities automatically with Snyk
+        run: snyk fix  # Cette commande corrige les vulnérabilités automatiquement
+
       - name: Monitor project with Snyk
         run: snyk monitor  # Envoie les résultats à Snyk pour affichage dans le tableau de bord
