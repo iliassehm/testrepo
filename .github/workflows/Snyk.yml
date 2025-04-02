@@ -14,19 +14,28 @@ jobs:
   snyk:
     runs-on: ubuntu-latest
     steps:
+      # Étape 1 : Checkout le code
       - name: Checkout code
         uses: actions/checkout@v2
 
+      # Étape 2 : Installer Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '14'  # ou une autre version selon ton besoin
 
+      # Étape 3 : Installer les dépendances
       - name: Install dependencies
         run: npm install
 
+      # Étape 4 : Installer Snyk CLI
       - name: Install Snyk CLI
         run: npm install -g snyk
 
+      # Étape 5 : Authentification Snyk avec le secret
+      - name: Authenticate with Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}  # Assure-toi que ton token est stocké dans les secrets de GitHub
+
+      # Étape 6 : Analyser les vulnérabilités
       - name: Run Snyk test
         run: snyk test
