@@ -37,6 +37,7 @@ jobs:
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Extract Release Tag
+        if: startsWith(github.ref, 'refs/tags/')
         run: echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
       - name: Validate Release Tag
         run: |
