@@ -44,7 +44,7 @@ jobs:
           echo "${{ secrets.SCW_SECRET_KEY }}" | docker login rg.${{ secrets.SCW_REGION }}.scw.cloud -u ${{ secrets.SCW_ACCESS_KEY }} --password-stdin
 
       - name: Pull container image for the release
-        run: docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
+        run: docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:2025.14.6
 
       # 1️⃣ Scan du code source et envoi à Snyk App
       - name: Run Snyk Code Scan
