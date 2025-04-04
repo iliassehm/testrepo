@@ -38,13 +38,29 @@ jobs:
 
       - name: Extract Release Tag
         run: echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+      - name: Validate Release Tag
+        run: |
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "❌ No release tag found!"
+            exit 1
+          else
+            echo "✅ Found release tag: $RELEASE_TAG"
+          fi
+
 
       - name: Login to Scaleway Container Registry
         run: |
           echo "${{ secrets.SCW_SECRET_KEY }}" | docker login rg.${{ secrets.SCW_REGION }}.scw.cloud -u ${{ secrets.SCW_ACCESS_KEY }} --password-stdin
 
-      - name: Pull container image for the release
-        run: docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
+      - name: Extract Release Tag
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "RELEASE_TAG=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+          ficker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
 
       # 1️⃣ Scan du code source et envoi à Snyk App
       - name: Run Snyk Code Scan
