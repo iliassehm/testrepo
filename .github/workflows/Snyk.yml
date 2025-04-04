@@ -40,10 +40,15 @@ jobs:
         run: |
           LATEST_TAG=$(curl -s -H "X-Auth-Token: ${{ secrets.SCW_SECRET_KEY }}" \
           "https://api.scaleway.com/registry/v1/regions/${{ secrets.SCW_REGION }}/namespaces/${{ secrets.SCW_REGISTRY_NAME }}/images/backend/tags" | \
-          jq -r '.tags | sort_by(.created_at) | last(.[]).name')
-          
-          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
-          echo "✅ Found latest tag: ${LATEST_TAG}"
+          jq -r '.tags | select(length > 0) | sort_by(.created_at) | last(.[]).name // empty')
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ No tags found in Scaleway Container Registry!"
+            exit 1
+          else
+            echo "✅ Found latest tag: $LATEST_TAG"
+            echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+          fi
 
 
       - name: Login to Scaleway Container Registry
