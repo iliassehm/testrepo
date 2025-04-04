@@ -53,7 +53,7 @@ jobs:
       - name: Pull Docker image
         run: |
           echo "Pulling Docker image with tag: $LATEST_TAG"
-          docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}
+          docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:$LATEST_TAG
 
       # Autres étapes de scan de sécurité
       - name: Run Snyk Code Scan
