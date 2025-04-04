@@ -54,6 +54,15 @@ jobs:
         run: |
           echo "Pulling Docker image with tag: $LATEST_TAG"
           echo "${{ secrets.SCW_SECRET_KEY }}" | docker login rg.${{ secrets.SCW_REGION }}.scw.cloud -u ${{ secrets.SCW_ACCESS_KEY }} --password-stdin
+          docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}
+
+      # Scan de l'image Docker avec Snyk
+      - name: Run Snyk Container Security Scan
+        run: |
+          snyk container test rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }} || echo "Container scan found vulnerabilities, but continuing"
+
+      - name: Monitor Container in Snyk
+        run: snyk container monitor rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}
 
       # Autres étapes de scan de sécurité
       - name: Run Snyk Code Scan
@@ -61,3 +70,17 @@ jobs:
 
       - name: Monitor Snyk Code Issues
         run: snyk code monitor || echo "Snyk Code Monitor failed, but continuing"
+
+      # 2️⃣ Scan des dépendances et envoi à Snyk App
+      - name: Run Dependency Scan
+        run: snyk test || echo "Dependency scan found vulnerabilities, but continuing"
+
+      - name: Monitor Dependency Issues
+        run: snyk monitor || echo "Snyk Dependency Monitor failed, but continuing"
+
+      # 3️⃣ Scan de la configuration Terraform/Kubernetes et envoi à Snyk App
+      - name: Run Infrastructure-as-Code Security Scan (Terraform/K8s)
+        run: snyk iac test || echo "Snyk IaC scan found issues, but continuing"
+
+      - name: Monitor IaC Issues
+        run: snyk iac monitor || echo "Snyk IaC Monitor failed, but continuing"
