@@ -7,7 +7,7 @@ on:
 
   release:
     types:
-      - created  # Exécute le workflow quand une release est créée
+      - created  # Exécute le workflow quand une release est crééen  zjdkd
 
 jobs:
   security-scan:
