@@ -4,11 +4,12 @@ on:
   push:
     branches:
       - main
-      - feat/test-brancheeeee
-
+  pull_request:
+    branches:
+      - main
   release:
     types:
-      - created  # Exécute le workflow quand une release est crééen  zjdkd
+      - created  # Exécute le workflow quand une release est créée
 
 jobs:
   security-scan:
@@ -16,6 +17,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Fetch tags
+        run: |
+          git fetch --tags
+          echo "Tags fetched"
+
+      - name: Get Latest Tag
+        id: latest-tag
+        run: |
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
+          echo "Latest tag: $latest_tag"
 
       - name: Set up Node.js
         uses: actions/setup-node@v2
@@ -35,56 +48,15 @@ jobs:
       - name: Authenticate with Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-      - name: Get Tags
-        id: tags
+      # Utiliser le dernier tag dans la commande de pull de l'image Docker
+      - name: Pull Docker image
         run: |
-          git fetch --tags
-          echo "Tags fetched"
-      - name: Get Latest Tag
-        id: latest-tag
-        run: |
-          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-      
+          echo "Pulling Docker image with tag: $LATEST_TAG"
+          docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}
 
-      - name: Login to Scaleway Container Registry
-        run: |
-          echo "${{ secrets.SCW_SECRET_KEY }}" | docker login rg.${{ secrets.SCW_REGION }}.scw.cloud -u ${{ secrets.SCW_ACCESS_KEY }} --password-stdin
-
-      - name: Pull container image for the release
-        run: docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
-
-      # 1️⃣ Scan du code source et envoi à Snyk App
+      # Autres étapes de scan de sécurité
       - name: Run Snyk Code Scan
         run: snyk code test || echo "Code scan found issues, but continuing"
 
       - name: Monitor Snyk Code Issues
         run: snyk code monitor || echo "Snyk Code Monitor failed, but continuing"
-
-      # 2️⃣ Scan des dépendances et envoi à Snyk App
-      - name: Run Dependency Scan
-        run: snyk test || echo "Dependency scan found vulnerabilities, but continuing"
-
-      - name: Monitor Dependency Issues
-        run: snyk monitor || echo "Snyk Dependency Monitor failed, but continuing"
-
-      # 3️⃣ Scan de l'image Docker avec Snyk et envoi à Snyk App
-      - name: Run Snyk Container Security Scan
-        run: |
-          snyk container test rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }} || echo "Container scan found vulnerabilities, but continuing"
-
-      - name: Monitor Container in Snyk
-        run: snyk container monitor rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
-
-      # 4️⃣ Scan de l'image Docker avec Trivy
-      - name: Run Trivy Container Scan
-        run: |
-          trivy image --exit-code 0 --severity HIGH,CRITICAL rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
-
-      # 5️⃣ Scan de la configuration Terraform/Kubernetes et envoi à Snyk App
-      - name: Run Infrastructure-as-Code Security Scan (Terraform/K8s)
-        run: snyk iac test || echo "Snyk IaC scan found issues, but continuing"
-
-      - name: Monitor IaC Issues
-        run: snyk iac monitor || echo "Snyk IaC Monitor failed, but continuing"
