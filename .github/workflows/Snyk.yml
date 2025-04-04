@@ -1,0 +1,84 @@
+name: Full Security Scan
+
+on:
+  push:
+    branches:
+      - main
+
+  release:
+    types:
+      - created  # Exécute le workflow quand une release est créée
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'  # Version plus récente pour compatibilité
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Security Tools
+        run: |
+          npm install -g snyk
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          wget https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -O /usr/local/bin/tfsec
+          chmod +x /usr/local/bin/tfsec
+
+      - name: Authenticate with Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Test
+        run: |
+             echo $RELEASE_VERSION
+             echo ${{ env.RELEASE_VERSION }}
+      
+
+      - name: Login to Scaleway Container Registry
+        run: |
+          echo "${{ secrets.SCW_SECRET_KEY }}" | docker login rg.${{ secrets.SCW_REGION }}.scw.cloud -u ${{ secrets.SCW_ACCESS_KEY }} --password-stdin
+
+      - name: Pull container image for the release
+        run: docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
+
+      # 1️⃣ Scan du code source et envoi à Snyk App
+      - name: Run Snyk Code Scan
+        run: snyk code test || echo "Code scan found issues, but continuing"
+
+      - name: Monitor Snyk Code Issues
+        run: snyk code monitor || echo "Snyk Code Monitor failed, but continuing"
+
+      # 2️⃣ Scan des dépendances et envoi à Snyk App
+      - name: Run Dependency Scan
+        run: snyk test || echo "Dependency scan found vulnerabilities, but continuing"
+
+      - name: Monitor Dependency Issues
+        run: snyk monitor || echo "Snyk Dependency Monitor failed, but continuing"
+
+      # 3️⃣ Scan de l'image Docker avec Snyk et envoi à Snyk App
+      - name: Run Snyk Container Security Scan
+        run: |
+          snyk container test rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }} || echo "Container scan found vulnerabilities, but continuing"
+
+      - name: Monitor Container in Snyk
+        run: snyk container monitor rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
+
+      # 4️⃣ Scan de l'image Docker avec Trivy
+      - name: Run Trivy Container Scan
+        run: |
+          trivy image --exit-code 0 --severity HIGH,CRITICAL rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
+
+      # 5️⃣ Scan de la configuration Terraform/Kubernetes et envoi à Snyk App
+      - name: Run Infrastructure-as-Code Security Scan (Terraform/K8s)
+        run: snyk iac test || echo "Snyk IaC scan found issues, but continuing"
+
+      - name: Monitor IaC Issues
+        run: snyk iac monitor || echo "Snyk IaC Monitor failed, but continuing"
