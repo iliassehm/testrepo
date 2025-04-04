@@ -44,7 +44,7 @@ jobs:
           echo "${{ secrets.SCW_SECRET_KEY }}" | docker login rg.${{ secrets.SCW_REGION }}.scw.cloud -u ${{ secrets.SCW_ACCESS_KEY }} --password-stdin
 
       - name: Pull container image for the release
-        run: docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:2025.14.6
+        run: docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
 
       # 1️⃣ Scan du code source et envoi à Snyk App
       - name: Run Snyk Code Scan
@@ -63,16 +63,15 @@ jobs:
       # 3️⃣ Scan de l'image Docker avec Snyk et envoi à Snyk App
       - name: Run Snyk Container Security Scan
         run: |
-          snyk container test rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:2025.14.6 || echo "Container scan found vulnerabilities, but continuing"
+          snyk container test rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }} || echo "Container scan found vulnerabilities, but continuing"
 
       - name: Monitor Container in Snyk
-        run: snyk container monitor rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:2025.14.6
+        run: snyk container monitor rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
 
       # 4️⃣ Scan de l'image Docker avec Trivy
       - name: Run Trivy Container Scan
         run: |
-          trivy image --exit-code 0 --severity HIGH,CRITICAL rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:2025.14.6
-
+          trivy image --exit-code 0 --severity HIGH,CRITICAL rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
 
       # 5️⃣ Scan de la configuration Terraform/Kubernetes et envoi à Snyk App
       - name: Run Infrastructure-as-Code Security Scan (Terraform/K8s)
