@@ -15,17 +15,21 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     steps:
+      # 1️⃣ Checkout le code
       - name: Checkout code
         uses: actions/checkout@v2
 
+      # 2️⃣ Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '18'  # Version plus récente pour compatibilité
 
+      # 3️⃣ Installer les dépendances
       - name: Install dependencies
         run: npm install
 
+      # 4️⃣ Installer les outils de sécurité
       - name: Install Security Tools
         run: |
           npm install -g snyk
@@ -33,15 +37,26 @@ jobs:
           wget https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -O /usr/local/bin/tfsec
           chmod +x /usr/local/bin/tfsec
 
+      # 5️⃣ Authentification avec Snyk
       - name: Authenticate with Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Get Latest Docker Image Tag from Scaleway
+      # 6️⃣ Installer le Scaleway CLI
+      - name: Install Scaleway CLI
         run: |
-          LATEST_TAG=$(curl -s -H "X-Auth-Token: ${{ secrets.SCW_SECRET_KEY }}" \
-          "https://api.scaleway.com/registry/v1/regions/${{ secrets.SCW_REGION }}/namespaces/${{ secrets.SCW_REGISTRY_NAME }}/images/backend/tags" | \
-          jq -r '.tags | select(length > 0) | sort_by(.created_at) | last(.[]).name // empty')
+          curl -sL https://github.com/scaleway/scaleway-cli/releases/download/v2.4.0/scw-v2.4.0-linux-amd64.tar.gz | tar xz
+          sudo mv scw /usr/local/bin/
 
+      # 7️⃣ Authentification avec Scaleway CLI
+      - name: Authenticate with Scaleway CLI
+        run: |
+          scw config profile set access-key ${{ secrets.SCW_ACCESS_KEY }} secret-key ${{ secrets.SCW_SECRET_KEY }} region ${{ secrets.SCW_REGION }}
+
+      # 8️⃣ Récupérer la dernière version de l'image Docker
+      - name: Get Latest Docker Image Tag from Scaleway CLI
+        run: |
+          LATEST_TAG=$(scw container image list --namespace ${SCW_REGISTRY_NAME} --image-name backend --format "{{ .Tag }}" | sort -r | head -n 1)
+          
           if [ -z "$LATEST_TAG" ]; then
             echo "❌ No tags found in Scaleway Container Registry!"
             exit 1
@@ -50,49 +65,40 @@ jobs:
             echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
           fi
 
-
-      - name: Login to Scaleway Container Registry
+      # 9️⃣ Pull de l'image Docker avec le dernier tag
+      - name: Pull Latest Docker Image
         run: |
-          echo "${{ secrets.SCW_SECRET_KEY }}" | docker login rg.${{ secrets.SCW_REGION }}.scw.cloud -u ${{ secrets.SCW_ACCESS_KEY }} --password-stdin
+          echo "🚀 Pulling latest image: rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}"
+          docker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}
 
-      - name: Extract Release Tag
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
-            echo "RELEASE_TAG=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          else
-            echo "RELEASE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
-          ficker pull rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
-
-      # 1️⃣ Scan du code source et envoi à Snyk App
+      # 10️⃣ Scan du code source et envoi à Snyk App
       - name: Run Snyk Code Scan
         run: snyk code test || echo "Code scan found issues, but continuing"
 
       - name: Monitor Snyk Code Issues
         run: snyk code monitor || echo "Snyk Code Monitor failed, but continuing"
 
-      # 2️⃣ Scan des dépendances et envoi à Snyk App
+      # 11️⃣ Scan des dépendances et envoi à Snyk App
       - name: Run Dependency Scan
         run: snyk test || echo "Dependency scan found vulnerabilities, but continuing"
 
       - name: Monitor Dependency Issues
         run: snyk monitor || echo "Snyk Dependency Monitor failed, but continuing"
 
-      # 3️⃣ Scan de l'image Docker avec Snyk et envoi à Snyk App
+      # 12️⃣ Scan de l'image Docker avec Snyk et envoi à Snyk App
       - name: Run Snyk Container Security Scan
         run: |
-          snyk container test rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }} || echo "Container scan found vulnerabilities, but continuing"
+          snyk container test rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }} || echo "Container scan found vulnerabilities, but continuing"
 
       - name: Monitor Container in Snyk
-        run: snyk container monitor rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
+        run: snyk container monitor rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}
 
-      # 4️⃣ Scan de l'image Docker avec Trivy
+      # 13️⃣ Scan de l'image Docker avec Trivy
       - name: Run Trivy Container Scan
         run: |
-          trivy image --exit-code 0 --severity HIGH,CRITICAL rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.RELEASE_TAG }}
+          trivy image --exit-code 0 --severity HIGH,CRITICAL rg.${{ secrets.SCW_REGION }}.scw.cloud/${{ secrets.SCW_REGISTRY_NAME }}/backend:${{ env.LATEST_TAG }}
 
-      # 5️⃣ Scan de la configuration Terraform/Kubernetes et envoi à Snyk App
+      # 14️⃣ Scan de la configuration Terraform/Kubernetes et envoi à Snyk App
       - name: Run Infrastructure-as-Code Security Scan (Terraform/K8s)
         run: snyk iac test || echo "Snyk IaC scan found issues, but continuing"
 
